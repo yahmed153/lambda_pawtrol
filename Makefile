@@ -4,6 +4,7 @@
 BINARY_NAME=main
 BUILD_DIR=bin
 MAIN_PACKAGE_PATH=./main.go
+DEPLOYMENT_PACKAGE=deployment.zip
 
 # ====================================================================================
 # Default Target
@@ -29,6 +30,7 @@ run: build
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
+	@rm -rf $(DEPLOYMENT_PACKAGE)
 	@echo "✨ Clean complete"
 
 ## fmt: Format all Go source files using go fmt
@@ -61,6 +63,13 @@ build-linux-amd64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PACKAGE_PATH)
 
+## package: Package binary to be uploaded to AWS Lambda
+.PHONY: package
+package: build-linux-arm64
+	@echo "🐧 Packaging binary for Linux (arm64)..."
+	@cp $(BUILD_DIR)/$(BINARY_NAME) .
+	@zip deployment.zip $(BINARY_NAME)
+	@rm -f $(BINARY_NAME)
 
 # ====================================================================================
 # Help
