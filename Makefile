@@ -1,7 +1,7 @@
 # ====================================================================================
 # Variables
 # ====================================================================================
-BINARY_NAME=main
+BINARY_NAME=bootstrap
 BUILD_DIR=bin
 MAIN_PACKAGE_PATH=./main.go
 DEPLOYMENT_PACKAGE=deployment.zip

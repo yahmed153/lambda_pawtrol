@@ -24,11 +24,17 @@ type ResponseBody struct {
 func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	// 1. Parse incoming JSON body
 	var body RequestBody
-	err := json.Unmarshal([]byte(req.Body), &body)
-	if err != nil {
+	if req.Body == "" {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusBadRequest,
-			Body:       `{"error": "Invalid JSON request body"}`,
+			Body:       `{"error": "Empty request body"}`,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+		}, nil
+	}
+	if err := json.Unmarshal([]byte(req.Body), &body); err != nil {
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusBadRequest,
+			Body:       fmt.Sprintf(`{"error": "Invalid JSON request body: %s"}`, err.Error()),
 			Headers:    map[string]string{"Content-Type": "application/json"},
 		}, nil
 	}
