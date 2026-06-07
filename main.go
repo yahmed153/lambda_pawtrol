@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
@@ -30,18 +31,29 @@ func buildResponse(httpStatusCode int, jsonBody string) events.APIGatewayV2HTTPR
 	}
 }
 
-func insertItem(ctx context.Context, hostname string) error {
+func upsertItem(ctx context.Context, hostname string) error {
+	key, err := attributevalue.MarshalMap(map[string]string{
+		"hostname": hostname,
+	})
+
+	if err != nil {
+		return err
+	}
+
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-1"))
 	if err != nil {
 		return err
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	_, err = dynamoClient.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: new(TableName),
-		Item: map[string]types.AttributeValue{
-			"hostname":   &types.AttributeValueMemberS{Value: hostname},
-			"created_at": &types.AttributeValueMemberS{Value: time.Now().UTC().Format(time.RFC3339)},
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+	_, err = dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName:        new(TableName),
+		Key:              key,
+		UpdateExpression: new("SET Email = :email, #status = :status, created_at = if_not_exists(created_at, :createdAt)"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":created_at": &types.AttributeValueMemberS{Value: timestamp},
+			":updated_at": &types.AttributeValueMemberS{Value: timestamp},
 		},
 	})
 
@@ -68,7 +80,7 @@ func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.AP
 	}
 
 	// 3. Store hostname in DB
-	if err := insertItem(ctx, parsedURL.Hostname()); err != nil {
+	if err := upsertItem(ctx, parsedURL.Hostname()); err != nil {
 		log.Println(err.Error())
 		return buildResponse(http.StatusInternalServerError,
 			fmt.Sprintf(`{"error": "Inserting hostname into database failed: %s"}`, err.Error())), nil
@@ -80,6 +92,5 @@ func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.AP
 }
 
 func main() {
-	// Start the Lambda runtime loop
 	lambda.Start(Handler)
 }
