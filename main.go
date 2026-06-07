@@ -50,10 +50,15 @@ func upsertItem(ctx context.Context, hostname string) error {
 	_, err = dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName:        new(TableName),
 		Key:              key,
-		UpdateExpression: new("SET Email = :email, #status = :status, created_at = if_not_exists(created_at, :createdAt)"),
+		UpdateExpression: new("SET #c = if_not_exists(#c, :zero) + :one, created_at = if_not_exists(created_at, :createdAt), updated_at = :updatedAt"),
+		ExpressionAttributeNames: map[string]string{
+			"#c": "count",
+		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":created_at": &types.AttributeValueMemberS{Value: timestamp},
-			":updated_at": &types.AttributeValueMemberS{Value: timestamp},
+			":zero":      &types.AttributeValueMemberN{Value: "0"},
+			":one":       &types.AttributeValueMemberN{Value: "1"},
+			":createdAt": &types.AttributeValueMemberS{Value: timestamp},
+			":updatedAt": &types.AttributeValueMemberS{Value: timestamp},
 		},
 	})
 
@@ -87,7 +92,7 @@ func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.AP
 	}
 
 	// 4. Return successful response
-	return buildResponse(http.StatusInternalServerError,
+	return buildResponse(http.StatusOK,
 		fmt.Sprintf(`{"message": "Thank you 😀 for helping us fight 🥊 malicious sites, hostname: (%s) has been submitted"}`, parsedURL.Hostname())), nil
 }
 
