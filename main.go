@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -46,19 +47,24 @@ func upsertItem(ctx context.Context, hostname string) error {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	timestamp := time.Now().UTC().Format(time.RFC3339)
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	expireAt := strconv.FormatInt(time.Now().AddDate(0, 0, 90).Unix(), 10)
+	entryTimestamp := [1]string{timestamp}
+	strconv.Itoa(1)
 	_, err = dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName:        new(TableName),
 		Key:              key,
-		UpdateExpression: new("SET #c = if_not_exists(#c, :zero) + :one, created_at = if_not_exists(created_at, :createdAt), updated_at = :updatedAt"),
+		UpdateExpression: new("SET #c = if_not_exists(#c, :zero) + :one, createdAt = if_not_exists(createdAt, :createdAt), updatedAt = :updatedAt, expireAt = :expireAt ADD entryTimestamps :entryTimestamp"),
 		ExpressionAttributeNames: map[string]string{
 			"#c": "count",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":zero":      &types.AttributeValueMemberN{Value: "0"},
-			":one":       &types.AttributeValueMemberN{Value: "1"},
-			":createdAt": &types.AttributeValueMemberS{Value: timestamp},
-			":updatedAt": &types.AttributeValueMemberS{Value: timestamp},
+			":zero":           &types.AttributeValueMemberN{Value: "0"},
+			":one":            &types.AttributeValueMemberN{Value: "1"},
+			":createdAt":      &types.AttributeValueMemberN{Value: timestamp},
+			":updatedAt":      &types.AttributeValueMemberN{Value: timestamp},
+			":expireAt":       &types.AttributeValueMemberN{Value: expireAt},
+			":entryTimestamp": &types.AttributeValueMemberNS{Value: entryTimestamp[:]},
 		},
 	})
 
