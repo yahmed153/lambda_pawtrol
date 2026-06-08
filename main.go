@@ -50,7 +50,6 @@ func upsertItem(ctx context.Context, hostname string) error {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	expireAt := strconv.FormatInt(time.Now().AddDate(0, 0, 90).Unix(), 10)
 	entryTimestamp := [1]string{timestamp}
-	strconv.Itoa(1)
 	_, err = dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName:        new(TableName),
 		Key:              key,
