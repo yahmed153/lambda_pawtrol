@@ -26,6 +26,10 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           # The role-to-assume should be the ARN of the IAM role you created for GitHub Actions OIDC
 
+      - name: Build binary
+        run: |
+          make build
+
       - name: Deploy Lambda Function
         uses: aws-actions/aws-lambda-deploy@v1.1.0
         with:
