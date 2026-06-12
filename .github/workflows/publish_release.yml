@@ -37,4 +37,5 @@ jobs:
           code-artifacts-dir: bin
           handler: bootstrap
           runtime: provided.al2023
+          publish: true
           # Add any additional inputs this actionn
