@@ -21,7 +21,7 @@ import (
 const TableName = "pawtrol"
 
 type RequestBody struct {
-	HostName string `json:"hostname,omitempty"`
+	URL string `json:"url,omitempty"`
 }
 
 func buildResponse(httpStatusCode int, jsonBody string) events.APIGatewayV2HTTPResponse {
@@ -36,7 +36,6 @@ func upsertItem(ctx context.Context, hostname string) error {
 	key, err := attributevalue.MarshalMap(map[string]string{
 		"hostname": hostname,
 	})
-
 	if err != nil {
 		return err
 	}
@@ -82,23 +81,23 @@ func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.AP
 			`{"error": "Invalid JSON request body"}`), nil
 	}
 
-	// 2. Validate hostname is a valid URL
-	parsedURL, err := url.ParseRequestURI(body.HostName)
+	// 2. Validate request body is a valid URL
+	parsedURL, err := url.ParseRequestURI(body.URL)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
 		return buildResponse(http.StatusBadRequest,
-			fmt.Sprintf(`{"error": "hostname is not a valid URL: %s"}`, body.HostName)), nil
+			fmt.Sprintf(`{"error": "%s is not a valid URL"}`, body.URL)), nil
 	}
 
 	// 3. Store hostname in DB
 	if err := upsertItem(ctx, parsedURL.Hostname()); err != nil {
 		log.Println(err.Error())
 		return buildResponse(http.StatusInternalServerError,
-			fmt.Sprintf(`{"error": "Inserting hostname into database failed: %s"}`, err.Error())), nil
+			`{"error": "Inserting hostname into database failed"}`), nil
 	}
 
 	// 4. Return successful response
 	return buildResponse(http.StatusOK,
-		fmt.Sprintf(`{"message": "Thank you 😀 for helping us fight 🥊 malicious sites, hostname: (%s) has been submitted"}`, parsedURL.Hostname())), nil
+		fmt.Sprintf(`{"message": "Hostname: (%s) has been submitted. Thank you 😀 for helping us fight 🥊 malicious sites"}`, parsedURL.Hostname())), nil
 }
 
 func main() {
